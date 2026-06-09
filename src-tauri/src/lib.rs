@@ -31,6 +31,7 @@ mod services;
 mod session_manager;
 mod settings;
 mod store;
+mod webui;
 
 mod tray;
 mod usage_events;
@@ -888,7 +889,24 @@ pub fn run() {
                 app.handle().clone(),
             );
             // 将同一个实例注入到全局状态，避免重复创建导致的不一致
+            let webui_state = Arc::new(app_state.clone());
             app.manage(app_state);
+
+            if crate::webui::WebUiServer::should_start_from_env() {
+                let webui_server = crate::webui::WebUiServer::new(webui_state);
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Runtime::new()
+                        .expect("WebUI tokio runtime");
+                    rt.block_on(async move {
+                        match webui_server.start_from_env().await {
+                            Ok(addr) => log::info!("WebUI server listening on http://{addr}"),
+                            Err(e) => log::error!("WebUI server failed to start: {e}"),
+                        }
+                        // Block forever to keep the runtime alive
+                        futures::future::pending::<()>().await;
+                    });
+                });
+            }
 
             // 从数据库加载日志配置并应用
             {
