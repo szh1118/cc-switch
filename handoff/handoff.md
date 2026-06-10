@@ -35,6 +35,11 @@ Add complete LAN WebUI support to cc-switch with browser-based remote control.
    - Server can bind to 0.0.0.0 for LAN while still enforcing auth for public IPs
 3. **UI warning text** - Changed from amber "强制要求令牌" to blue "允许同一网络访问，无需令牌"
 4. **ConnectInfo middleware** - Added to get actual client IP from requests
+5. **⚠️ CRITICAL: WebUI providers list fix** (2026-06-10 22:20)
+   - `ProviderService::list()` returns `IndexMap<String, Provider>` (object)
+   - Frontend expects `Provider[]` (array)
+   - Fixed in `webui.rs` `get_providers()`: convert to `Vec` before JSON response
+   - **This bug has recurred 3 times** - always check WebUI HTTP routes return arrays, not IndexMap
 
 ## Requirements Checklist
 - [x] Backend HTTP API with smart authentication
@@ -135,6 +140,29 @@ README modifications only go to their respective branches (don't sync README bet
 
 1. **Initial loopback-only check** - Too restrictive, blocked LAN access
 2. **Git author config** - Local git needs `GIT_AUTHOR_NAME/EMAIL` env vars
+
+## Critical Deployment Notes (DO NOT DELETE)
+
+### WebUI Static Files
+**Problem**: After building, WebUI may still show "还没有添加任何供应商" even though `curl /api/providers` returns data.
+
+**Root Cause**: WebUI reads static files from `/usr/bin/dist`, NOT from project `dist/`.
+- Server logs: `WebUI serving static files from: /usr/bin/dist`
+- Even after `npx vite build` + `cargo build --release`, server uses old cached HTML/JS
+
+**Solution**: Always update both locations:
+```bash
+npx vite build
+cargo build --release --manifest-path=src-tauri/Cargo.toml
+sudo cp src-tauri/target/release/cc-switch /usr/bin/
+sudo cp -r dist /usr/bin/  # ← CRITICAL: Don't forget this!
+```
+
+**Debugging Steps**:
+1. Check served HTML: `curl http://127.0.0.1:15722/index.html | grep index-.*js`
+2. Check disk HTML: `cat dist/index.html | grep index-.*js`
+3. If different → `/usr/bin/dist` is stale
+4. Check which dist: `grep "WebUI serving static" <log-file>`
 
 ## Next Steps
 
