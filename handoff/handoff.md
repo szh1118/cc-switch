@@ -30,8 +30,11 @@ Add complete LAN WebUI support to cc-switch with browser-based remote control.
 
 ### Recent Fixes (2026-06-10)
 1. **Tauri devUrl removal** - Desktop UI now loads embedded frontend correctly
-2. **RFC 1918 private network auth** - Localhost + LAN免token，only public IP needs token
+2. **RFC 1918 private network auth** - Check client IP instead of server bind address
+   - Private clients (192.168.x.x, 10.x.x.x, etc.) can access without token
+   - Server can bind to 0.0.0.0 for LAN while still enforcing auth for public IPs
 3. **UI warning text** - Changed from amber "强制要求令牌" to blue "允许同一网络访问，无需令牌"
+4. **ConnectInfo middleware** - Added to get actual client IP from requests
 
 ## Requirements Checklist
 - [x] Backend HTTP API with smart authentication
@@ -74,17 +77,20 @@ Add complete LAN WebUI support to cc-switch with browser-based remote control.
 - `CC_SWITCH_WEBUI_TOKEN` - Auth token (only for public IP)
 
 ### Authentication Logic (RFC 1918)
-- **Private networks** (localhost, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, link-local): No token required
+- **Check client IP** (via ConnectInfo middleware), not server bind address
+- **Private clients** (localhost, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, link-local): No token required
 - **Public IPs**: Bearer token required
-- Enforced at `require_auth` middleware (webui.rs:155-183)
+- Server can bind to 0.0.0.0 for LAN access while still protecting against public IP access
+- Enforced at `require_auth` middleware (webui.rs:168-217)
 
 ## Decisions Made
 
 1. **Auto-start by default**: WebUI starts unless `CC_SWITCH_WEBUI=0`
-2. **RFC 1918 based auth**: Private networks免token, public IP需要token
+2. **RFC 1918 based auth**: Check client IP (not server bind address) - Private clients免token, public IP需要token
 3. **Separate PR/fork branches**: PR has sponsors, fork/main cleaned
 4. **No devUrl in production**: Removed from tauri.conf.json to fix desktop UI loading
 5. **UI color coding**: Blue info box for LAN mode (not amber warning)
+6. **User push requirement**: Always push to BOTH `fork/main` AND `fork/feature/lan-webui` (PR branch)
 
 ## Git Branches
 
@@ -99,9 +105,10 @@ Both branches include all fixes and are up-to-date.
 ### ✅ All Verified Working
 1. **Desktop UI** - Loads correctly after removing devUrl
 2. **WebUI localhost access** - `http://127.0.0.1:15722/` works without token
-3. **WebUI LAN access** - `http://192.168.x.x:15722/` works without token
+3. **WebUI LAN access** - `http://192.168.1.240:15722/` works without token (client IP checked, not server bind address)
 4. **Provider list** - Shows correctly in both desktop and browser
 5. **Settings UI** - Correctly shows blue info "允许同一网络访问（RFC 1918，无需令牌）"
+6. **Server on 0.0.0.0** - Can bind to 0.0.0.0 while still checking client IP for auth
 
 ### Build Status
 - Rust: Compiles successfully (release build ~4min)
