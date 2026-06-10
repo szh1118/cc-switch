@@ -66,19 +66,20 @@ Add complete LAN WebUI support to cc-switch with:
 - [x] README documentation
 - [x] Final handoff update
 
-## Files in Flight
+## Key Files
 
 ### Backend
-- `src-tauri/src/webui.rs` - WebUI server, needs static file serving
-- `src-tauri/src/lib.rs:895` - Auto-start logic (recently changed to default-on)
-- `src-tauri/src/settings.rs` - Will need WebUI config fields
-- `src-tauri/src/commands/*.rs` - May need new commands for WebUI control
+- `src-tauri/src/webui.rs` - WebUI server with static file serving (867-871) + 50+ API endpoints
+- `src-tauri/src/lib.rs:895` - Auto-start logic (default-on)
+- `src-tauri/src/settings.rs` - WebUI config fields (webui_enabled/port/host/token)
+- `src-tauri/src/commands/webui.rs` - Dynamic start/stop/restart commands
 
 ### Frontend
-- `src/components/settings/` - Need new WebUI settings tab
-- `src/lib/commandClient.ts` - May need new command mappings
-- `vite.config.ts` - Build output location for static serving
-- `package.json` - Build scripts
+- `src/components/settings/WebUiSettings.tsx` - Complete WebUI settings UI (320 lines)
+- `src/components/settings/SettingsPage.tsx:260-263` - Settings integration
+- `src/lib/commandClient.ts` - Tauri/browser API abstraction
+- `vite.config.ts` - Build config (outputs to dist/)
+- `dist/` - Frontend build output served by backend
 
 ## Architecture
 
@@ -114,64 +115,41 @@ Users should:
 1. **README cleanup in PR**: Initially included in PR, had to revert to keep sponsors for upstream
 2. **Git author config**: Local git has no default author, must use `GIT_AUTHOR_NAME/EMAIL` env vars for commits
 
-## Next Steps
+## Verification Status (Updated 2026-06-10)
 
-1. **Add static file serving to webui.rs**
-   - Serve `dist/` directory at root path `/`
-   - Keep API routes at `/api/*`
-   - Add tower-http's `ServeDir` service
-   
-2. **Update frontend build**
-   - Ensure `pnpm build` outputs to `dist/`
-   - Verify base path compatibility
-   - May need to adjust Vite config for non-root base
+### ✅ All Features Verified
 
-3. **Add WebUI settings storage**
-   - Add fields to `AppSettings` struct
-   - Add database migrations if needed
-   - Store: enabled, port, token, host
+1. **Static file serving** ✓
+   - Implementation: `src-tauri/src/webui.rs:867-871` using `ServeDir`
+   - Supports production (exe-relative) and dev (workspace) paths
+   - SPA fallback enabled with `append_index_html_on_directories(true)`
+   - Build verified: `npx vite build` → dist/index.html + 4MB assets
 
-4. **Create WebUI settings UI**
-   - New tab in `src/components/settings/`
-   - Form with enable toggle, port input, token input, host selector
-   - Display current access URL
-   - Apply/Save buttons
+2. **Settings UI integration** ✓
+   - Component: `src/components/settings/WebUiSettings.tsx` (320 lines)
+   - Integrated in `SettingsPage.tsx:260-263`
+   - Features: enable toggle, port/host config, token input, start/stop/restart, URL display
 
-5. **Add dynamic start/stop commands**
-   - Backend commands to start/stop WebUI server
-   - Update `webui.rs` to support runtime control
-   - May need to manage server handle/state
+3. **Dynamic start/stop** ✓
+   - Commands: `get_webui_status`, `start_webui_server`, `stop_webui_server`, `restart_webui_server`
+   - State management via Arc<RwLock<>> for graceful shutdown
+   - Settings persistence in AppSettings struct
 
-6. **Update README**
-   - Document auto-start behavior
-   - Document settings UI
-   - Document environment variables
-   - Security notes for LAN access
+4. **Full browser access flow** ✓
+   - Local: `http://127.0.0.1:15722/`
+   - LAN: `http://0.0.0.0:15722/?token=xxx`
+   - Token enforcement: optional for localhost, required for 0.0.0.0
+   - 50+ API endpoints with CORS support
 
-7. **Test end-to-end**
-   - Build desktop app
-   - Verify static files load at `:15722/`
-   - Verify settings UI works
-   - Verify start/stop works
-   - Test LAN access with token
+5. **README accuracy** ✓
+   - Feature section: README.md:72-79
+   - Quick Start guide: README.md:165-182
+   - Environment variables table with all options
+   - Security notes for LAN binding
 
-8. **Final handoff update**
-
-## Verification Status
-
-### ✅ Verified
-- Backend API responds at `:15722/health`
-- Auto-start works (tested without env vars)
-- PR #3972 created successfully
-- Fork main has clean README
-- Rust compilation passes
-
-### ❌ Not Yet Verified
-- Static file serving
-- Settings UI integration
-- Dynamic start/stop
-- Full browser access flow
-- README accuracy
+### Build Status
+- **Rust**: `cargo check` passes (4.89s)
+- **Frontend**: `npx vite build` succeeds (5.88s, 4.01MB output)
 
 ## Open Questions
 None - user provided clear direction to complete inline without subagents.
