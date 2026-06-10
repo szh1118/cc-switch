@@ -87,18 +87,34 @@ Add complete LAN WebUI support to cc-switch with browser-based remote control.
 
 1. **Auto-start by default**: WebUI starts unless `CC_SWITCH_WEBUI=0`
 2. **RFC 1918 based auth**: Check client IP (not server bind address) - Private clients免token, public IP需要token
-3. **Separate PR/fork branches**: PR has sponsors, fork/main cleaned
-4. **No devUrl in production**: Removed from tauri.conf.json to fix desktop UI loading
-5. **UI color coding**: Blue info box for LAN mode (not amber warning)
-6. **User push requirement**: Always push to BOTH `fork/main` AND `fork/feature/lan-webui` (PR branch)
+3. **No devUrl in production**: Removed from tauri.conf.json to fix desktop UI loading
+4. **UI color coding**: Blue info box for LAN mode (not amber warning)
+5. **Branch/README policy**: 
+   - fork/main: Clean README (no sponsors, only 学AI link)
+   - feature/lan-webui: Full README (with sponsors for upstream)
+   - Code changes push to BOTH branches
 
-## Git Branches
+## Git Branches & Push Policy
 
-- `fork/main` (szh1118/cc-switch:main) - Clean README, all WebUI features
-- `fork/feature/lan-webui` - PR branch with sponsors for upstream
-- PR: https://github.com/farion1231/cc-switch/pull/3972
+### User's Branch Strategy
+- `fork/main` (szh1118/cc-switch:main) - **Personal fork with cleaned README**
+  - No sponsor section
+  - Only AI learning link (学AI)
+  - All functional code updates
+  
+- `fork/feature/lan-webui` - **PR branch for upstream**
+  - Full README with sponsor section (for upstream maintainer)
+  - All functional code updates (same as main)
+  - PR: https://github.com/farion1231/cc-switch/pull/3972
 
-Both branches include all fixes and are up-to-date.
+### Push Requirement
+**Always push to BOTH branches** for any code changes:
+1. Commit to main
+2. Push to `fork/main`
+3. Cherry-pick to `feature/lan-webui`
+4. Push to `fork/feature/lan-webui`
+
+README modifications only go to their respective branches (don't sync README between branches).
 
 ## Verification Status
 
