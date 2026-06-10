@@ -1,173 +1,122 @@
-<!-- claude-session-id: 4f85cc96-f0c6-4128-b8b4-427c62f463fb; updated: 2026-06-10 -->
+<!-- claude-session-id: 66113990-09fb-40a7-91dc-7098effdb8b3; updated: 2026-06-10-15-10-00 -->
 
 # Handoff
 
 ## Goal
-Add complete LAN WebUI support to cc-switch with:
-1. Backend HTTP API for remote browser control (✅ Done)
-2. Frontend browser compatibility layer (✅ Done)
-3. Static file serving (✅ Done)
-4. Settings UI (✅ Done)
-5. Auto-start by default with opt-out (✅ Done)
-6. README documentation (✅ Done)
+Add complete LAN WebUI support to cc-switch with browser-based remote control.
 
-## Current State — ALL TASKS COMPLETE
+## Current State — ALL COMPLETE ✅
 
-### ✅ Completed
-- **Backend WebUI API server** (`src-tauri/src/webui.rs`, ~900 lines)
+### WebUI Feature Fully Implemented and Fixed
+- **Backend HTTP API** (`src-tauri/src/webui.rs`, ~900 lines)
   - 50+ management endpoints (providers/proxy/settings/usage/models)
-  - Bearer token authentication
-  - CORS support
-  - Independent thread + tokio runtime for stability
+  - RFC 1918 private network auth: localhost + LAN no token, public IP requires token
+  - Static file serving from `dist/` with SPA fallback
   - Auto-starts by default (opt-out via `CC_SWITCH_WEBUI=0`)
-  - Static file serving via `ServeDir` (serves `dist/` with SPA fallback)
-  - `/api/webui/status`, `/api/webui/start`, `/api/webui/stop`, `/api/webui/restart` routes
+  - Dynamic start/stop/restart via Tauri commands
 
-- **Frontend browser compatibility** (`src/lib/commandClient.ts`, 208 lines)
+- **Frontend Browser Compatibility** (`src/lib/commandClient.ts`)
   - Runtime detection (Tauri vs browser)
-  - Unified API abstraction (`invoke` → `fetch` translation)
-  - 20+ files migrated to use `commandClient`
-  - Event bridge support (Tauri events vs HTTP polling/WebSocket)
+  - Unified API abstraction (invoke → fetch)
+  - Token handling for WebUI mode
 
-- **WebUI Settings UI** (`src/components/settings/WebUiSettings.tsx`)
-  - Enable/disable toggle with auto start/stop
-  - Port configuration (1024-65535)
-  - Host binding selector (localhost vs LAN)
-  - Token input with LAN-required enforcement
-  - Access URL display with copy/open buttons
+- **Settings UI** (`src/components/settings/WebUiSettings.tsx`)
+  - Enable/disable toggle
+  - Port/host configuration
+  - Token input (for public IP only)
   - Start/Stop/Restart controls
-  - Status badge (running/stopped)
+  - Access URL display with copy/open buttons
+  - Updated warning: "允许同一网络访问（RFC 1918，无需令牌）"
 
-- **Tauri commands** (`src-tauri/src/commands/webui.rs`)
-  - `get_webui_status` / `start_webui_server` / `stop_webui_server` / `restart_webui_server`
-  - Registered in lib.rs command handler list
-
-- **Settings persistence** (`src-tauri/src/settings.rs`)
-  - `webui_enabled`, `webui_port`, `webui_host`, `webui_token` fields in AppSettings
-
-- **README updated** with:
-  - WebUI feature section under Features
-  - Quick Start guide with LAN setup instructions
-  - Environment variables table
-  - Security note about token enforcement
-
-- **PR submitted**: https://github.com/farion1231/cc-switch/pull/3972
-  - Branch: `feature/lan-webui`
+### Recent Fixes (2026-06-10)
+1. **Tauri devUrl removal** - Desktop UI now loads embedded frontend correctly
+2. **RFC 1918 private network auth** - Localhost + LAN免token，only public IP needs token
+3. **UI warning text** - Changed from amber "强制要求令牌" to blue "允许同一网络访问，无需令牌"
 
 ## Requirements Checklist
-- [x] Backend HTTP API with authentication
+- [x] Backend HTTP API with smart authentication
 - [x] Frontend browser compatibility layer
 - [x] Auto-start WebUI by default
-- [x] PR submitted to upstream
-- [x] Fork README cleaned
 - [x] Serve static files from backend
 - [x] Settings UI for WebUI configuration
 - [x] Dynamic WebUI start/stop
+- [x] Fix desktop UI loading (remove devUrl)
+- [x] Fix WebUI 401 errors (RFC 1918 auth)
+- [x] Update UI warning text
 - [x] README documentation
-- [x] Final handoff update
+- [x] PR submitted to upstream
 
 ## Key Files
 
 ### Backend
-- `src-tauri/src/webui.rs` - WebUI server with static file serving (867-871) + 50+ API endpoints
-- `src-tauri/src/lib.rs:895` - Auto-start logic (default-on)
-- `src-tauri/src/settings.rs` - WebUI config fields (webui_enabled/port/host/token)
-- `src-tauri/src/commands/webui.rs` - Dynamic start/stop/restart commands
+- `src-tauri/src/webui.rs` - WebUI server with RFC 1918 auth logic
+  - `is_private_ip()` - Checks loopback + RFC 1918 + link-local
+  - `start_from_settings()` - Only requires token for public IPs
+  - Static serving at line 867-871
+- `src-tauri/src/commands/webui.rs` - Dynamic control commands
+- `src-tauri/tauri.conf.json` - Removed devUrl to fix desktop UI
 
 ### Frontend
-- `src/components/settings/WebUiSettings.tsx` - Complete WebUI settings UI (320 lines)
-- `src/components/settings/SettingsPage.tsx:260-263` - Settings integration
-- `src/lib/commandClient.ts` - Tauri/browser API abstraction
-- `vite.config.ts` - Build config (outputs to dist/)
-- `dist/` - Frontend build output served by backend
+- `src/components/settings/WebUiSettings.tsx` - Settings UI with updated warning text (line 220-230)
+- `src/lib/commandClient.ts` - Tauri/browser abstraction
+- `dist/` - Frontend build output
 
 ## Architecture
 
-### Current Ports
-- `15722` - Backend WebUI API (auto-starts)
-- `3000` - Vite dev server (manual, dev only)
+### Ports
+- `15722` - WebUI API (auto-starts)
+- `3000` - Vite dev server (dev only)
 
 ### Environment Variables
-- `CC_SWITCH_WEBUI=0` - Disable auto-start (default: enabled)
+- `CC_SWITCH_WEBUI=0` - Disable auto-start
 - `CC_SWITCH_WEBUI_HOST` - Bind address (default: 127.0.0.1)
 - `CC_SWITCH_WEBUI_PORT` - Port (default: 15722)
-- `CC_SWITCH_WEBUI_TOKEN` - Auth token (default: none)
+- `CC_SWITCH_WEBUI_TOKEN` - Auth token (only for public IP)
 
-### Production Goal
-Users should:
-1. Launch cc-switch desktop app
-2. Access WebUI at `http://127.0.0.1:15722/` in any browser
-3. Configure WebUI settings in Settings → WebUI tab
-4. Optionally enable LAN access with token
+### Authentication Logic (RFC 1918)
+- **Private networks** (localhost, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, link-local): No token required
+- **Public IPs**: Bearer token required
+- Enforced at `require_auth` middleware (webui.rs:155-183)
 
 ## Decisions Made
 
-1. **Auto-start by default**: WebUI now starts automatically unless `CC_SWITCH_WEBUI=0`
-2. **Separate PR branch from fork main**: 
-   - PR has sponsors (for upstream)
-   - Fork main has no sponsors (personal preference)
-3. **No subagents for remaining work**: User explicitly requested inline implementation
-4. **Token optional for localhost**: Only required for non-loopback binding
-5. **Port separation**: Backend API (15722) separate from dev server (3000)
+1. **Auto-start by default**: WebUI starts unless `CC_SWITCH_WEBUI=0`
+2. **RFC 1918 based auth**: Private networks免token, public IP需要token
+3. **Separate PR/fork branches**: PR has sponsors, fork/main cleaned
+4. **No devUrl in production**: Removed from tauri.conf.json to fix desktop UI loading
+5. **UI color coding**: Blue info box for LAN mode (not amber warning)
+
+## Git Branches
+
+- `fork/main` (szh1118/cc-switch:main) - Clean README, all WebUI features
+- `fork/feature/lan-webui` - PR branch with sponsors for upstream
+- PR: https://github.com/farion1231/cc-switch/pull/3972
+
+Both branches include all fixes and are up-to-date.
+
+## Verification Status
+
+### ✅ All Verified Working
+1. **Desktop UI** - Loads correctly after removing devUrl
+2. **WebUI localhost access** - `http://127.0.0.1:15722/` works without token
+3. **WebUI LAN access** - `http://192.168.x.x:15722/` works without token
+4. **Provider list** - Shows correctly in both desktop and browser
+5. **Settings UI** - Correctly shows blue info "允许同一网络访问（RFC 1918，无需令牌）"
+
+### Build Status
+- Rust: Compiles successfully (release build ~4min)
+- Frontend: `npx vite build` succeeds (~5.6s)
+- Binary size: 31MB (with embedded frontend)
 
 ## Failed Attempts
 
-1. **README cleanup in PR**: Initially included in PR, had to revert to keep sponsors for upstream
-2. **Git author config**: Local git has no default author, must use `GIT_AUTHOR_NAME/EMAIL` env vars for commits
+1. **Initial loopback-only check** - Too restrictive, blocked LAN access
+2. **Git author config** - Local git needs `GIT_AUTHOR_NAME/EMAIL` env vars
 
-## Verification Status (Updated 2026-06-10)
+## Next Steps
 
-### ✅ All Features Verified
-
-1. **Static file serving** ✓
-   - Implementation: `src-tauri/src/webui.rs:867-871` using `ServeDir`
-   - Supports production (exe-relative) and dev (workspace) paths
-   - SPA fallback enabled with `append_index_html_on_directories(true)`
-   - Build verified: `npx vite build` → dist/index.html + 4MB assets
-
-2. **Settings UI integration** ✓
-   - Component: `src/components/settings/WebUiSettings.tsx` (320 lines)
-   - Integrated in `SettingsPage.tsx:260-263`
-   - Features: enable toggle, port/host config, token input, start/stop/restart, URL display
-
-3. **Dynamic start/stop** ✓
-   - Commands: `get_webui_status`, `start_webui_server`, `stop_webui_server`, `restart_webui_server`
-   - State management via Arc<RwLock<>> for graceful shutdown
-   - Settings persistence in AppSettings struct
-
-4. **Full browser access flow** ✓
-   - Local: `http://127.0.0.1:15722/`
-   - LAN: `http://0.0.0.0:15722/?token=xxx`
-   - Token enforcement: optional for localhost, required for 0.0.0.0
-   - 50+ API endpoints with CORS support
-
-5. **README accuracy** ✓
-   - Feature section: README.md:72-79
-   - Quick Start guide: README.md:165-182
-   - Environment variables table with all options
-   - Security notes for LAN binding
-
-### Build Status
-- **Rust**: `cargo check` passes (4.89s)
-- **Frontend**: `npx vite build` succeeds (5.88s, 4.01MB output)
+None - all features complete and verified. Ready for upstream review.
 
 ## Open Questions
-None - user provided clear direction to complete inline without subagents.
 
-## Technical Notes
-
-### Rust Dependencies Already Available
-- `axum` 0.7 - HTTP framework
-- `tower` - Middleware
-- `tower-http` with `cors` feature - Need to verify `fs` feature for static serving
-- `tokio` - Async runtime
-
-### Frontend Build
-- Vite build outputs to `dist/` by default
-- Need to verify `index.html` base path
-- May need to bundle at build time or serve from `dist/` at runtime
-
-### State Management
-- WebUI server lives in separate thread with separate tokio runtime
-- Current design starts on app launch
-- Dynamic control needs message passing or shared state handle
+None
